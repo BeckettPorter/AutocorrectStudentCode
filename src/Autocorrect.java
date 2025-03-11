@@ -25,6 +25,9 @@ public class Autocorrect {
         this.threshold = threshold;
         this.dictionary = words;
 
+        // not sure if I start at 0 or 1
+        System.out.println(findEditDistance("change", "changes", 0));
+
         runTest("");
 
     }
@@ -42,7 +45,6 @@ public class Autocorrect {
 
 
 
-
         return new String[0];
     }
 
@@ -50,9 +52,13 @@ public class Autocorrect {
     // We are trying to turn word 1 into word 2
     private int findEditDistance(String word1, String word2, int index)
     {
-        if (index == word2.length())
+        if (index == word2.length() - 1)
         {
             return 0;
+        }
+        else if (index == word1.length() - 1)
+        {
+            return word1.length() - index;
         }
 
         char char1 = word1.charAt(index);
@@ -94,10 +100,9 @@ public class Autocorrect {
         }
         else
         {
-            findEditDistance(word1, word2, index + 1);
+            return findEditDistance(word1, word2, index + 1);
         }
         // not sure why I need this bc its never gonna be reachable ?
-        return 0;
     }
 
 
