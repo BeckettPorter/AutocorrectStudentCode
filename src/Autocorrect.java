@@ -8,16 +8,24 @@ import java.io.IOException;
  * A command-line tool to suggest similar words when given one not in the dictionary.
  * </p>
  * @author Zach Blick
- * @author YOUR NAME HERE
+ * @author Beckett
  */
 public class Autocorrect {
+
+    private int threshold;
+    private String[] dictionary;
 
     /**
      * Constucts an instance of the Autocorrect class.
      * @param words The dictionary of acceptable words.
      * @param threshold The maximum number of edits a suggestion can have.
      */
-    public Autocorrect(String[] words, int threshold) {
+    public Autocorrect(String[] words, int threshold)
+    {
+        this.threshold = threshold;
+        this.dictionary = words;
+
+        runTest("");
 
     }
 
@@ -25,17 +33,92 @@ public class Autocorrect {
      * Runs a test from the tester file, AutocorrectTester.
      * @param typed The (potentially) misspelled word, provided by the user.
      * @return An array of all dictionary words with an edit distance less than or equal
-     * to threshold, sorted by edit distnace, then sorted alphabetically.
+     * to threshold, sorted by edit distance, then sorted alphabetically.
      */
-    public String[] runTest(String typed) {
+    public String[] runTest(String typed)
+    {
+        // Find
+
+
+
+
 
         return new String[0];
     }
 
 
+    // We are trying to turn word 1 into word 2
+    private int findEditDistance(String word1, String word2, int index)
+    {
+        if (index == word2.length())
+        {
+            return 0;
+        }
+
+        char char1 = word1.charAt(index);
+        char char2 = word2.charAt(index);
+
+        // We have three possible choices, we can add a letter, remove a letter, or replace a letter.
+        // Recursively first prolly
+
+        // First, given a char, we have to see which options we can do.
+
+        if (char1 != char2)
+        {
+            // REPLACE
+            String replaceString;
+
+            replaceString = word1.substring(0, index - 1) + char2 + word1.substring(index + 1);
+
+            int replaceCount = findEditDistance(replaceString, word2, index + 1);
+
+            // ADD
+            String addString;
+
+            addString = word1.substring(0, index) + char2 + word1.substring(index);
+
+            int addCount = findEditDistance(addString, word2, index + 1);
+
+
+            // REMOVE
+            String removeString;
+
+            removeString = word1.substring(0, index) + word1.substring(index + 1);
+
+            int removeCount = findEditDistance(removeString, word2, index + 1);
+
+
+            // Return the lowest we've found.
+            return 1 + Math.min(Math.min(replaceCount, addCount), removeCount);
+
+        }
+        else
+        {
+            findEditDistance(word1, word2, index + 1);
+        }
+        // not sure why I need this bc its never gonna be reachable ?
+        return 0;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /**
-     * Loads a dictionary of words from the provided textfiles in the dictionaries directory.
-     * @param dictionary The name of the textfile, [dictionary].txt, in the dictionaries directory.
+     * Loads a dictionary of words from the provided textfiles in the dictionaries' directory.
+     * @param dictionary The name of the textfile, [dictionary].txt, in the dictionaries' directory.
      * @return An array of Strings containing all words in alphabetical order.
      */
     private static String[] loadDictionary(String dictionary)  {
