@@ -5,6 +5,7 @@ Name: Beckett Porter
 | April 5    |             9-10pm             |                                                                                                                                                                                                                                                                             I tried to write abstract, efficient code. |
 | March 6th  |        12:35 - 12:40pm         |                                                                                                                                                                                                                                              I cloned the repo and read over the assignment. Also shared it to github. |
 | March 11th | 9:40 - 9:55am, 11:20 - 11:35am | I began by working on the edit threshold method. I have a rough draft of it now and I tried it in an online code editor because I can't get it to print anything out here because of the tests and it was decently close. It definitely was off in certain cases but it sometimes got it correct, better than nothing. |
+| March 12th |        11:40 - 11:55 pm        |                          I went through and tried to find the errors in my findEditDistance method. I found some with the base cases and fixed it and it seems like it is actually working now? There was also an issue with my replace step where I was incorrectly creating the new string after replacing a letter. |
 
 
 To add a new row to the table, click into a cell and then hit shift-enter.

@@ -15,6 +15,10 @@ public class AutocorrectTester {
     public void testSmall() {
         setTestData(0);
         studentSolution = new Autocorrect(dictionary, threshold);
+
+        // This is for testing! Remove later.
+        System.out.println(studentSolution.runTest(typed)[0]);
+
         assertArrayEquals(matches, studentSolution.runTest(typed), "Incorrect words returned.");
     }
 

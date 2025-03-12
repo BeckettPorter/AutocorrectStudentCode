@@ -25,8 +25,7 @@ public class Autocorrect {
         this.threshold = threshold;
         this.dictionary = words;
 
-        // not sure if I start at 0 or 1
-        System.out.println(findEditDistance("change", "changes", 0));
+
 
         runTest("");
 
@@ -43,22 +42,20 @@ public class Autocorrect {
         // Find
 
 
+        String[] ar = new String[1];
 
+        ar[0] = Integer.toString(findEditDistance("changes", "changes", 0));
 
-        return new String[0];
+        return ar;
     }
 
 
     // We are trying to turn word 1 into word 2
     private int findEditDistance(String word1, String word2, int index)
     {
-        if (index == word2.length() - 1)
+        if (index >= word1.length() || index >= word2.length())
         {
-            return 0;
-        }
-        else if (index == word1.length() - 1)
-        {
-            return word1.length() - index;
+            return Math.abs(word1.length() - word2.length());
         }
 
         char char1 = word1.charAt(index);
@@ -72,24 +69,18 @@ public class Autocorrect {
         if (char1 != char2)
         {
             // REPLACE
-            String replaceString;
-
-            replaceString = word1.substring(0, index - 1) + char2 + word1.substring(index + 1);
+            String replaceString = word1.substring(0, index) + char2 + word1.substring(index + 1);
 
             int replaceCount = findEditDistance(replaceString, word2, index + 1);
 
             // ADD
-            String addString;
-
-            addString = word1.substring(0, index) + char2 + word1.substring(index);
+            String addString = word1.substring(0, index) + char2 + word1.substring(index);
 
             int addCount = findEditDistance(addString, word2, index + 1);
 
 
             // REMOVE
-            String removeString;
-
-            removeString = word1.substring(0, index) + word1.substring(index + 1);
+            String removeString = word1.substring(0, index) + word1.substring(index + 1);
 
             int removeCount = findEditDistance(removeString, word2, index + 1);
 
@@ -102,7 +93,6 @@ public class Autocorrect {
         {
             return findEditDistance(word1, word2, index + 1);
         }
-        // not sure why I need this bc its never gonna be reachable ?
     }
 
 
