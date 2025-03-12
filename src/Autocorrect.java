@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Autocorrect
@@ -12,8 +13,9 @@ import java.io.IOException;
  */
 public class Autocorrect {
 
-    private int threshold;
-    private String[] dictionary;
+    private final int threshold;
+    private final String[] dictionary;
+    public static final int RADIX = 16;
 
     /**
      * Constucts an instance of the Autocorrect class.
@@ -24,8 +26,6 @@ public class Autocorrect {
     {
         this.threshold = threshold;
         this.dictionary = words;
-
-
 
         runTest("");
 
@@ -39,16 +39,45 @@ public class Autocorrect {
      */
     public String[] runTest(String typed)
     {
-        // Find
+        ArrayList<String> ar = new ArrayList<>();
 
+        for (String s : dictionary)
+        {
+            if (findEditDistance(s, typed, 0) <= threshold)
+            {
+                ar.add(s);
+            }
+        }
 
-        String[] ar = new String[1];
+        String[] potentialWords = new String[ar.size()];
 
-        ar[0] = Integer.toString(findEditDistance("changes", "changes", 0));
+        ar.toArray(potentialWords);
 
-        return ar;
+        return potentialWords;
     }
 
+//    private String[] getPossibleCandidates(int numCandidatesToGet)
+//    {
+//
+//        ArrayList<Long> ar = new ArrayList<>();
+//
+//        // Arraylist (dictionary size) of Arraylists (n -gram)
+//
+//
+//        return
+//    }
+//
+// Helper method that hashes a single string using the Rabin-Karp algorithm.
+//    private long hashSingleString(String str)
+//    {
+//        int hash = 0;
+//
+//        for (int i = 0; i < str.length(); i++)
+//        {
+//            hash = (hash * RADIX + str.charAt(i)) % 1610612741;
+//        }
+//        return hash;
+//    }
 
     // We are trying to turn word 1 into word 2
     private int findEditDistance(String word1, String word2, int index)
@@ -62,7 +91,6 @@ public class Autocorrect {
         char char2 = word2.charAt(index);
 
         // We have three possible choices, we can add a letter, remove a letter, or replace a letter.
-        // Recursively first prolly
 
         // First, given a char, we have to see which options we can do.
 
@@ -78,7 +106,6 @@ public class Autocorrect {
 
             int addCount = findEditDistance(addString, word2, index + 1);
 
-
             // REMOVE
             String removeString = word1.substring(0, index) + word1.substring(index + 1);
 
@@ -87,7 +114,6 @@ public class Autocorrect {
 
             // Return the lowest we've found.
             return 1 + Math.min(Math.min(replaceCount, addCount), removeCount);
-
         }
         else
         {
