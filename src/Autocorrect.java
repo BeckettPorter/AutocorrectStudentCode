@@ -2,6 +2,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Scanner;
 
 /**
  * Autocorrect
@@ -14,9 +16,9 @@ import java.util.ArrayList;
 public class Autocorrect {
 
     private final int threshold;
-    private final String[] dictionary;
+    private static String[] dictionary;
     public static final int RADIX = 16;
-    public static String targetWord;
+    public static String misspelledWord;
 
     /**
      * Constucts an instance of the Autocorrect class.
@@ -26,53 +28,132 @@ public class Autocorrect {
     public Autocorrect(String[] words, int threshold)
     {
         this.threshold = threshold;
-        this.dictionary = words;
+        dictionary = words;
 
-        this.targetWord = "Algorithmm";
-
-//        runTest("");
+        misspelledWord = "Alphabte";
     }
 
     public static void main(String[] args)
     {
-
+        Autocorrect auto = new Autocorrect(loadDictionary("large"), 5);
+        auto.run();
     }
 
-    private String[] getPossibleCandidates(int numCandidatesToGet)
+    private static void run()
+    {
+        while (true)
+        {
+            Scanner s = new Scanner(System.in);
+
+            System.out.println("Enter a word plz: ");
+            misspelledWord = s.nextLine();
+            String[] candidates = getPossibleCandidates(100);
+
+            int lowestEditDistance = Integer.MAX_VALUE;
+            String mostSimilarWord = "";
+
+            for (String candidate : candidates)
+            {
+                int l = findEditDistance(candidate, misspelledWord, 0, 0);
+                if (l < lowestEditDistance)
+                {
+                    lowestEditDistance = l;
+                    mostSimilarWord = candidate;
+                }
+            }
+
+            System.out.println(mostSimilarWord);
+
+        }
+    }
+
+    private static String[] getPossibleCandidates(int numCandidatesToGet)
     {
 
-        ArrayList<Long>[] array = new ArrayList[dictionary.length];
+        HashMap<Long, ArrayList<Integer>> hashMap = new HashMap<>();
         int nGramSize = 2;
 
         // Arraylist (dictionary size) of Arraylists (n -gram)
 
+        // This goes through and hashes all the n-grams in the dictionary words. It adds the
+        // dictionary index of the word that the hash came from to the hash's spot in the array.
         for (int i = 0; i < dictionary.length; i++)
         {
             String currentWord = dictionary[i];
 
-            array[i] = new ArrayList<>();
-
             for (int j = 0; j < currentWord.length(); j += nGramSize)
             {
-                String currentSubstring = currentWord.substring(j, j + nGramSize);
+                if (j + nGramSize <= currentWord.length())
+                {
+                    String currentSubstring = currentWord.substring(j, j + nGramSize);
 
-                array[i].add(hashSingleString(currentSubstring));
+                    long currentSubstringHash = hashSingleString(currentSubstring);
+
+                    // If that spot in the hashmap doesn't have anything in it yet, initialize the arraylist.
+                    hashMap.putIfAbsent(currentSubstringHash, new ArrayList<>());
+
+                    // Add the index of the currentWord to the hash location's arraylist in the hashSet.
+                    hashMap.get(currentSubstringHash).add(i);
+                }
             }
-
         }
 
-        for (int i = 0; i < dictionary.length; i++)
+
+        // Now I need to hash the mistyped word and get its ngram hashes. Then I need to get num of
+        // appearances of a given dictionary word with similar hashes.
+
+
+        // Make this n-gram hasher modular in the future
+
+        ArrayList<Long> misspelledWordHashes = new ArrayList<>();
+        for (int j = 0; j < misspelledWord.length(); j += nGramSize)
         {
-
-            if ()
-            array[i]
+            if (j + nGramSize <= misspelledWord.length())
+            {
+                String currentSubstring = misspelledWord.substring(j, j + nGramSize);
+                misspelledWordHashes.add(hashSingleString(currentSubstring));
+            }
         }
 
-        return
+
+        // 1st int = word index, 2nd int = num appearances.
+        HashMap<Integer, Integer> appearances = new HashMap<>();
+        for (Long hash : misspelledWordHashes)
+        {
+            if (hashMap.get(hash) != null)
+            {
+                for (int i = 0; i < hashMap.get(hash).size(); i++)
+                {
+                    // I want th
+                    int currentSpot = hashMap.get(hash).get(i);
+
+                    // Increment the num appearances at the spot
+
+                    appearances.putIfAbsent(currentSpot, 1);
+
+                    appearances.put(currentSpot, appearances.get(currentSpot) + 1);
+                }
+            }
+        }
+
+
+        // I Found this online, needed a way to sort the hashmap by values (highest to lowest # of appearances)
+        // Sort keys based on their values (frequencies) in descending order
+
+        ArrayList<Integer> mostSimilarWords = new ArrayList<>(appearances.keySet());
+        mostSimilarWords.sort((idx1, idx2) -> appearances.get(idx2).compareTo(appearances.get(idx1)));
+
+        String[] mostSimilarWordsArrays = new String[100];
+        for (int i = 0; i < numCandidatesToGet; i++)
+        {
+            mostSimilarWordsArrays[i] = dictionary[mostSimilarWords.get(i)];
+        }
+
+        return mostSimilarWordsArrays;
     }
 
 // Helper method that hashes a single string using the Rabin-Karp algorithm.
-    private long hashSingleString(String str)
+    private static long hashSingleString(String str)
     {
         int hash = 0;
 
@@ -84,7 +165,7 @@ public class Autocorrect {
     }
 
     // We are trying to turn word 1 into word 2
-    private int findEditDistance(String word1, String word2, int index1, int index2)
+    private static int findEditDistance(String word1, String word2, int index1, int index2)
     {
         // Base cases that check if we have reached the end of either word. If we have, then we add
         // the difference between the other word's length and what index it is on to the returned edit distance.
