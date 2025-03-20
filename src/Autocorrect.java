@@ -82,6 +82,7 @@ public class Autocorrect {
             ArrayList<String> sortedMatches = new ArrayList<>(confirmedMatchesEditDistances.keySet());
             sortedMatches.sort(Comparator.comparing(confirmedMatchesEditDistances::get));
 
+            // Go through and print out the sorted matches if we have any, otherwise print that we didn't find any.
             if (!sortedMatches.isEmpty())
             {
                 for (String sortedMatch : sortedMatches)
@@ -91,7 +92,7 @@ public class Autocorrect {
             }
             else
             {
-                System.out.println("No matches found! Sorry :(");
+                System.out.println("No matches found! Sorry :'(");
             }
 
             System.out.println("----------------------");
@@ -102,9 +103,9 @@ public class Autocorrect {
     // NUM_POSSIBLE_CANDIDATES_TO_FIND determines the number of words we return.
     private static String[] getPossibleCandidates()
     {
-        // Create a hashMap: Keys are longs representing hashed nGrams, the values are arrayLists of
+        // Create a hashMap where keys are longs representing hashed nGrams, the values are arrayLists of
         // integers that correspond to the index in the dictionary array of the word that the nGram came from.
-        HashMap<Long, ArrayList<Integer>> hashMap = new HashMap<>();
+        HashMap<Long, ArrayList<Integer>> dictionaryWordNGramHashes = new HashMap<>();
 
         // This goes through and hashes all the n-grams in the dictionary words. It adds the
         // dictionary index of the word that the hash came from as the value associated with the hash's key.
@@ -133,16 +134,19 @@ public class Autocorrect {
                     currentSubstringHash = hashSingleString(currentSubstring);
 
                     // If that spot in the hashmap doesn't have anything in it yet, initialize the arraylist.
-                    hashMap.putIfAbsent(currentSubstringHash, new ArrayList<>());
+                    dictionaryWordNGramHashes.putIfAbsent(currentSubstringHash, new ArrayList<>());
 
                     // Add the index of the currentWord to the hash location's arraylist in the hashSet.
-                    hashMap.get(currentSubstringHash).add(i);
+                    dictionaryWordNGramHashes.get(currentSubstringHash).add(i);
                 }
             }
         }
 
-        // Comment this!!
+        // Make an arrayList of hashes for nGrams that make up the misspelled word.
         ArrayList<Long> misspelledWordHashes = new ArrayList<>();
+
+        // Then go through and hash nGrams of the misspelled word, these will later
+        // be used to compare to the hashes we found from dictionary word nGrams.
         for (int nGramSize = MIN_N_GRAM_TO_CHECK; nGramSize < MAX_N_GRAM_TO_CHECK; nGramSize++)
         {
             for (int j = 0; j < misspelledWord.length(); j += nGramSize)
@@ -160,22 +164,26 @@ public class Autocorrect {
             }
         }
 
-        // 1st Integer = Word index in the dictionary, 2nd Integer = Number of matching hashes.
+        // Now, make a hashMap with the keys being the word's index in the dictionary and the values being the
+        // number of matching nGram hashes to the misspelled word's nGram hashes.
         HashMap<Integer, Integer> appearances = new HashMap<>();
-        for (Long hash : misspelledWordHashes)
+        for (Long misspelledWordHash : misspelledWordHashes)
         {
             // If the given hash has any dictionary words that have similar nGrams.
-            if (hashMap.get(hash) != null)
+            if (dictionaryWordNGramHashes.get(misspelledWordHash) != null)
             {
-                for (int i = 0; i < hashMap.get(hash).size(); i++)
+                // Get the arrayList of integers representing the index of words in the dictionary that had the same
+                // hashed nGram values as the misspelled word's nGrams (that's a mouthful ik sorry).
+                for (int i = 0; i < dictionaryWordNGramHashes.get(misspelledWordHash).size(); i++)
                 {
-                    int currentSpot = hashMap.get(hash).get(i);
+                    int dictionaryWord = dictionaryWordNGramHashes.get(misspelledWordHash).get(i);
 
-                    // Increment the num appearances at the spot. If there haven't been any appearances
-                    // at that spot yet, we need to put a 1 there to start the counter.
-                    appearances.putIfAbsent(currentSpot, 1);
+                    // Increment the num appearances at the dictionary word. If there haven't been any appearances
+                    // at that spot yet, we need to put a 1 there to start the count.
+                    appearances.putIfAbsent(dictionaryWord, 1);
 
-                    appearances.put(currentSpot, appearances.get(currentSpot) + 1);
+                    // #TODO: make this only happen if we dont do put if absent
+                    appearances.put(dictionaryWord, appearances.get(dictionaryWord) + 1);
                 }
             }
         }
