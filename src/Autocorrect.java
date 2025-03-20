@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -15,10 +16,15 @@ import java.util.Scanner;
  */
 public class Autocorrect {
 
-    private final int threshold;
+    private static int threshold;
     private static String[] dictionary;
-    public static final int RADIX = 16;
-    public static String misspelledWord;
+    private static final int RADIX = 16;
+    private static final int MAX_N_GRAM_TO_CHECK = 3;
+    private static final int MIN_N_GRAM_TO_CHECK = 2;
+    private static final int EDIT_DISTANCE_THRESHOLD = 3;
+    private static final int NUM_POSSIBLE_CANDIDATES_TO_FIND = 100;
+    private static final String DICTIONARY_TO_USE = "large";
+    private static String misspelledWord;
 
     /**
      * Constucts an instance of the Autocorrect class.
@@ -27,67 +33,104 @@ public class Autocorrect {
      */
     public Autocorrect(String[] words, int threshold)
     {
-        this.threshold = threshold;
+        Autocorrect.threshold = threshold;
         dictionary = words;
-
-        misspelledWord = "Alphabte";
     }
 
     public static void main(String[] args)
     {
-        Autocorrect auto = new Autocorrect(loadDictionary("large"), 5);
-        auto.run();
+        new Autocorrect(loadDictionary(DICTIONARY_TO_USE), EDIT_DISTANCE_THRESHOLD);
+        run();
     }
 
     private static void run()
     {
         while (true)
         {
+            // Get user input for their word, exit if they type 'exit'.
             Scanner s = new Scanner(System.in);
 
-            System.out.println("Enter a word plz: ");
+            System.out.println("Enter a word: ");
             misspelledWord = s.nextLine();
-            String[] candidates = getPossibleCandidates(100);
 
-            int lowestEditDistance = Integer.MAX_VALUE;
-            String mostSimilarWord = "";
+            if (misspelledWord.equals("exit"))
+            {
+                return;
+            }
 
+            // Get similar dictionary words to the user's misspelled word.
+            String[] candidates = getPossibleCandidates();
+
+            // Go through these possibly similar dictionary words and add the ones with an edit distance below
+            // the threshold to a Hashmap. This Hashmap has the String as the key and the value as an
+            // Integer representing the editDistance for that string.
+            HashMap<String, Integer> confirmedMatchesEditDistances = new HashMap<>();
             for (String candidate : candidates)
             {
-                int l = findEditDistance(candidate, misspelledWord, 0, 0);
-                if (l < lowestEditDistance)
+                int editDistance = findEditDistance(candidate, misspelledWord, 0, 0);
+                if (editDistance < threshold)
                 {
-                    lowestEditDistance = l;
-                    mostSimilarWord = candidate;
+                    confirmedMatchesEditDistances.put(candidate, editDistance);
                 }
             }
 
-            System.out.println(mostSimilarWord);
+            // Using the confirmedMatchesEditDistances Hashmap, we can now sort the strings from the
+            // lowest edit distance to highest. This allows us to show the user the most likely words they
+            // meant to say first before less likely ones.
 
+            // Found this online, sorts a hashMap by their values from lowest to highest.
+            ArrayList<String> sortedMatches = new ArrayList<>(confirmedMatchesEditDistances.keySet());
+            sortedMatches.sort(Comparator.comparing(confirmedMatchesEditDistances::get));
+
+            if (!sortedMatches.isEmpty())
+            {
+                for (String sortedMatch : sortedMatches)
+                {
+                    System.out.println(sortedMatch);
+                }
+            }
+            else
+            {
+                System.out.println("No matches found! Sorry :(");
+            }
+
+            System.out.println("----------------------");
         }
     }
 
-    private static String[] getPossibleCandidates(int numCandidatesToGet)
+    // Return the most similar dictionary words to the misspelled word.
+    // NUM_POSSIBLE_CANDIDATES_TO_FIND determines the number of words we return.
+    private static String[] getPossibleCandidates()
     {
-
+        // Create a hashMap: Keys are longs representing hashed nGrams, the values are arrayLists of
+        // integers that correspond to the index in the dictionary array of the word that the nGram came from.
         HashMap<Long, ArrayList<Integer>> hashMap = new HashMap<>();
-        int nGramSize = 2;
-
-        // Arraylist (dictionary size) of Arraylists (n -gram)
 
         // This goes through and hashes all the n-grams in the dictionary words. It adds the
-        // dictionary index of the word that the hash came from to the hash's spot in the array.
+        // dictionary index of the word that the hash came from as the value associated with the hash's key.
         for (int i = 0; i < dictionary.length; i++)
         {
             String currentWord = dictionary[i];
 
-            for (int j = 0; j < currentWord.length(); j += nGramSize)
+            // Generate hashes for the minimum nGram length to the maximum nGram length.
+            for (int nGramSize = MIN_N_GRAM_TO_CHECK; nGramSize < MAX_N_GRAM_TO_CHECK; nGramSize++)
             {
-                if (j + nGramSize <= currentWord.length())
+                // Go through the currentWord in chunks of nGramSize to hash these nGrams.
+                for (int j = 0; j < currentWord.length(); j += nGramSize)
                 {
-                    String currentSubstring = currentWord.substring(j, j + nGramSize);
+                    String currentSubstring;
+                    long currentSubstringHash;
 
-                    long currentSubstringHash = hashSingleString(currentSubstring);
+                    if (j + nGramSize <= currentWord.length())
+                    {
+                        currentSubstring = currentWord.substring(j, j + nGramSize);
+                    }
+                    else
+                    {
+                        currentSubstring = currentWord.substring(j);
+                    }
+
+                    currentSubstringHash = hashSingleString(currentSubstring);
 
                     // If that spot in the hashmap doesn't have anything in it yet, initialize the arraylist.
                     hashMap.putIfAbsent(currentSubstringHash, new ArrayList<>());
@@ -98,37 +141,38 @@ public class Autocorrect {
             }
         }
 
-
-        // Now I need to hash the mistyped word and get its ngram hashes. Then I need to get num of
-        // appearances of a given dictionary word with similar hashes.
-
-
-        // Make this n-gram hasher modular in the future
-
+        // Comment this!!
         ArrayList<Long> misspelledWordHashes = new ArrayList<>();
-        for (int j = 0; j < misspelledWord.length(); j += nGramSize)
+        for (int nGramSize = MIN_N_GRAM_TO_CHECK; nGramSize < MAX_N_GRAM_TO_CHECK; nGramSize++)
         {
-            if (j + nGramSize <= misspelledWord.length())
+            for (int j = 0; j < misspelledWord.length(); j += nGramSize)
             {
-                String currentSubstring = misspelledWord.substring(j, j + nGramSize);
+                String currentSubstring;
+                if (j + nGramSize <= misspelledWord.length())
+                {
+                    currentSubstring = misspelledWord.substring(j, j + nGramSize);
+                }
+                else
+                {
+                    currentSubstring = misspelledWord.substring(j);
+                }
                 misspelledWordHashes.add(hashSingleString(currentSubstring));
             }
         }
 
-
-        // 1st int = word index, 2nd int = num appearances.
+        // 1st Integer = Word index in the dictionary, 2nd Integer = Number of matching hashes.
         HashMap<Integer, Integer> appearances = new HashMap<>();
         for (Long hash : misspelledWordHashes)
         {
+            // If the given hash has any dictionary words that have similar nGrams.
             if (hashMap.get(hash) != null)
             {
                 for (int i = 0; i < hashMap.get(hash).size(); i++)
                 {
-                    // I want th
                     int currentSpot = hashMap.get(hash).get(i);
 
-                    // Increment the num appearances at the spot
-
+                    // Increment the num appearances at the spot. If there haven't been any appearances
+                    // at that spot yet, we need to put a 1 there to start the counter.
                     appearances.putIfAbsent(currentSpot, 1);
 
                     appearances.put(currentSpot, appearances.get(currentSpot) + 1);
@@ -136,35 +180,34 @@ public class Autocorrect {
             }
         }
 
-
-        // I Found this online, needed a way to sort the hashmap by values (highest to lowest # of appearances)
-        // Sort keys based on their values (frequencies) in descending order
-
+        // I found this online, I needed a way to sort the hashmap by values (Highest to lowest # of appearances)
         ArrayList<Integer> mostSimilarWords = new ArrayList<>(appearances.keySet());
         mostSimilarWords.sort((idx1, idx2) -> appearances.get(idx2).compareTo(appearances.get(idx1)));
 
-        String[] mostSimilarWordsArrays = new String[100];
-        for (int i = 0; i < numCandidatesToGet; i++)
+        String[] mostSimilarWordsArrays = new String[Autocorrect.NUM_POSSIBLE_CANDIDATES_TO_FIND];
+        for (int i = 0; i < Autocorrect.NUM_POSSIBLE_CANDIDATES_TO_FIND; i++)
         {
             mostSimilarWordsArrays[i] = dictionary[mostSimilarWords.get(i)];
         }
 
+        // Return an array of the NUM_POSSIBLE_CANDIDATES_TO_FIND most similar words found in
+        // the dictionary to the misspelled word.
         return mostSimilarWordsArrays;
     }
 
-// Helper method that hashes a single string using the Rabin-Karp algorithm.
+    // Helper method that hashes a single string using the Rabin-Karp algorithm.
     private static long hashSingleString(String str)
     {
         int hash = 0;
 
         for (int i = 0; i < str.length(); i++)
         {
-            hash = (hash * RADIX + str.charAt(i)) % 1610612741;
+            hash = (hash * RADIX + str.charAt(i));
         }
         return hash;
     }
 
-    // We are trying to turn word 1 into word 2
+    // Find the minimum number of edits to turn word1 into word2 (or vice versa).
     private static int findEditDistance(String word1, String word2, int index1, int index2)
     {
         // Base cases that check if we have reached the end of either word. If we have, then we add
