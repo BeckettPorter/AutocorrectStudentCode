@@ -12,7 +12,7 @@ import java.util.Scanner;
  * A command-line tool to suggest similar words when given one not in the dictionary.
  * </p>
  * @author Zach Blick
- * @author Beckett
+ * @author Beckett Porter
  */
 public class Autocorrect {
 
@@ -21,8 +21,10 @@ public class Autocorrect {
     private static final int RADIX = 16;
     private static final int MAX_N_GRAM_TO_CHECK = 3;
     private static final int MIN_N_GRAM_TO_CHECK = 2;
+    private static final int MAX_MATCHES_TO_PRINT = 5;
     private static final int EDIT_DISTANCE_THRESHOLD = 3;
-    private static final int NUM_POSSIBLE_CANDIDATES_TO_FIND = 100;
+    private static final int MAX_CANDIDATE_LENGTH_DIFFERENCE = 3;
+    private static final int NUM_POSSIBLE_CANDIDATES_TO_FIND = 400;
     private static final String DICTIONARY_TO_USE = "large";
     private static String misspelledWord;
 
@@ -58,9 +60,17 @@ public class Autocorrect {
                 return;
             }
 
+
+            // Also, this profiler is a tool I made (with the help of chatgpt) that tells me the time it takes for a
+            // given segment of code to run. I used this to find the bottleneck that was slowing down the algorithm.
+            // Feel free to uncomment both the start profiler and end profiler lines to see it in action.
+//            Profiler.start("GetCandidates");
+
             // Get similar dictionary words to the user's misspelled word.
             String[] candidates = getPossibleCandidates();
+//            Profiler.end("GetCandidates");
 
+//            Profiler.start("EditDistances");
             // Go through these possibly similar dictionary words and add the ones with an edit distance below
             // the threshold to a Hashmap. This Hashmap has the String as the key and the value as an
             // Integer representing the editDistance for that string.
@@ -73,6 +83,7 @@ public class Autocorrect {
                     confirmedMatchesEditDistances.put(candidate, editDistance);
                 }
             }
+//            Profiler.end("EditDistances");
 
             // Using the confirmedMatchesEditDistances Hashmap, we can now sort the strings from the
             // lowest edit distance to highest. This allows us to show the user the most likely words they
@@ -85,14 +96,24 @@ public class Autocorrect {
             // Go through and print out the sorted matches if we have any, otherwise print that we didn't find any.
             if (!sortedMatches.isEmpty())
             {
-                for (String sortedMatch : sortedMatches)
+                // Check to make sure the first match (which is going to be most similar to the target word) is equal
+                // to the target word. This would mean that the word is not misspelled.
+                if (!sortedMatches.getFirst().equals(misspelledWord))
                 {
-                    System.out.println(sortedMatch);
+                    // Print out MAX_MATCHES_TO_PRINT number of the most similar matches.
+                    int numMatchesPrinted = 0;
+                    for (String sortedMatch : sortedMatches)
+                    {
+                        if (numMatchesPrinted++ < MAX_MATCHES_TO_PRINT)
+                        {
+                            System.out.println(sortedMatch);
+                        }
+                    }
                 }
             }
             else
             {
-                System.out.println("No matches found! Sorry :'(");
+                System.out.println("No matches found.");
             }
 
             System.out.println("----------------------");
@@ -180,10 +201,10 @@ public class Autocorrect {
 
                     // Increment the num appearances at the dictionary word. If there haven't been any appearances
                     // at that spot yet, we need to put a 1 there to start the count.
-                    appearances.putIfAbsent(dictionaryWord, 1);
-
-                    // #TODO: make this only happen if we dont do put if absent
-                    appearances.put(dictionaryWord, appearances.get(dictionaryWord) + 1);
+                    if (appearances.putIfAbsent(dictionaryWord, 1) != null)
+                    {
+                        appearances.put(dictionaryWord, appearances.get(dictionaryWord) + 1);
+                    }
                 }
             }
         }
@@ -192,15 +213,33 @@ public class Autocorrect {
         ArrayList<Integer> mostSimilarWords = new ArrayList<>(appearances.keySet());
         mostSimilarWords.sort((idx1, idx2) -> appearances.get(idx2).compareTo(appearances.get(idx1)));
 
+        // Make a String array that we will fill with the found candidates.
         String[] mostSimilarWordsArrays = new String[Autocorrect.NUM_POSSIBLE_CANDIDATES_TO_FIND];
         for (int i = 0; i < Autocorrect.NUM_POSSIBLE_CANDIDATES_TO_FIND; i++)
         {
             mostSimilarWordsArrays[i] = dictionary[mostSimilarWords.get(i)];
         }
 
-        // Return an array of the NUM_POSSIBLE_CANDIDATES_TO_FIND most similar words found in
-        // the dictionary to the misspelled word.
-        return mostSimilarWordsArrays;
+        // Cull words that are too different in length and return the similar words that pass this check. This
+        // drastically speeds up the time it takes for longer words to get autocorrected.
+        return cullVastlyDifferentSizedWords(mostSimilarWordsArrays, misspelledWord.length(),
+                MAX_CANDIDATE_LENGTH_DIFFERENCE);
+    }
+
+    // Helper method that returns an array with only words in it that have a length distance
+    // of maxDifference or less to the targetWordLength.
+    private static String[] cullVastlyDifferentSizedWords(String[] inputAr, int targetWordLength, int maxDifference)
+    {
+        ArrayList<String> matchesArrayList = new ArrayList<>();
+        for (String s : inputAr)
+        {
+            if (Math.abs(s.length() - targetWordLength) < maxDifference)
+            {
+                matchesArrayList.add(s);
+            }
+        }
+        String[] matchesArray = new String[matchesArrayList.size()];
+        return matchesArrayList.toArray(matchesArray);
     }
 
     // Helper method that hashes a single string using the Rabin-Karp algorithm.
