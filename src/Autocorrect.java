@@ -19,12 +19,12 @@ public class Autocorrect {
     private static int threshold;
     private static String[] dictionary;
     private static final int RADIX = 16;
-    private static final int MAX_N_GRAM_TO_CHECK = 3;
+    private static final int MAX_N_GRAM_TO_CHECK = 4;
     private static final int MIN_N_GRAM_TO_CHECK = 2;
     private static final int MAX_MATCHES_TO_PRINT = 5;
     private static final int EDIT_DISTANCE_THRESHOLD = 3;
-    private static final int MAX_CANDIDATE_LENGTH_DIFFERENCE = 3;
-    private static final int NUM_POSSIBLE_CANDIDATES_TO_FIND = 400;
+    private static final int MAX_CANDIDATE_LENGTH_DIFFERENCE = 2;
+    private static final int NUM_POSSIBLE_CANDIDATES_TO_FIND = 150;
     private static final String DICTIONARY_TO_USE = "large";
     private static String misspelledWord;
 
@@ -60,8 +60,9 @@ public class Autocorrect {
                 return;
             }
 
+            System.out.print("Running Algorithm...");
 
-            // Also, this profiler is a tool I made (with the help of chatgpt) that tells me the time it takes for a
+            // This profiler is a tool I made (with the help of chatgpt) that tells me the time it takes for a
             // given segment of code to run. I used this to find the bottleneck that was slowing down the algorithm.
             // Feel free to uncomment both the start profiler and end profiler lines to see it in action.
 //            Profiler.start("GetCandidates");
@@ -93,6 +94,10 @@ public class Autocorrect {
             ArrayList<String> sortedMatches = new ArrayList<>(confirmedMatchesEditDistances.keySet());
             sortedMatches.sort(Comparator.comparing(confirmedMatchesEditDistances::get));
 
+            // This \r returns the cursor to the start of the line (basically deleting the
+            // "Running Algorithm" text)
+            System.out.print("\r");
+
             // Go through and print out the sorted matches if we have any, otherwise print that we didn't find any.
             if (!sortedMatches.isEmpty())
             {
@@ -100,12 +105,16 @@ public class Autocorrect {
                 // to the target word. This would mean that the word is not misspelled.
                 if (!sortedMatches.getFirst().equals(misspelledWord))
                 {
+                    // If the word is misspelled, tell the user they may have meant the following words.
+                    System.out.println("Did you mean: ");
+
                     // Print out MAX_MATCHES_TO_PRINT number of the most similar matches.
                     int numMatchesPrinted = 0;
                     for (String sortedMatch : sortedMatches)
                     {
                         if (numMatchesPrinted++ < MAX_MATCHES_TO_PRINT)
                         {
+
                             System.out.println(sortedMatch);
                         }
                     }
